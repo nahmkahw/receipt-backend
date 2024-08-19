@@ -1,0 +1,6 @@
+/.vscode
+/nahmkahw/environments/config.yaml
+/redis_data/appendonly.aof
+/font
+/logs
+/docker-compose.yml
