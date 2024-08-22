@@ -6,6 +6,9 @@ import (
 	"net/http"
 	"io/ioutil"
 	"strings"
+    "github.com/sirupsen/logrus"
+    "runtime"
+    "fmt"
 
 	"github.com/labstack/echo"
 )
@@ -13,11 +16,12 @@ import (
 type (
 	UploadtHandlers struct {
 		uploadServices services.UploadServiceInterface
+        logger *logrus.Logger
 	}
 )
 
-func NewUploadtHandlers(uploadServices services.UploadServiceInterface) UploadtHandlers {
-	return UploadtHandlers{uploadServices: uploadServices}
+func NewUploadtHandlers(uploadServices services.UploadServiceInterface, logger *logrus.Logger) UploadtHandlers {
+	return UploadtHandlers{uploadServices: uploadServices, logger : logger}
 }
 
 func (h *UploadtHandlers) UploadFileImage(c echo.Context) error {
@@ -51,11 +55,15 @@ func (h *UploadtHandlers) UploadFileImage(c echo.Context) error {
 
     // Validate file type
     if fileType != "png" && fileType != "jpg" && fileType != "jpeg" {
+        param := fmt.Sprintf("%s,%s,%s",ordercode,filename,fileType)
+		h.logError(errs.NewMessageAndStatusCode(http.StatusBadRequest,"Unsupported file type. Only png, jpg, and jpeg are allowed."),param)
         return c.JSON(http.StatusBadRequest, errs.NewMessageAndStatusCode(http.StatusBadRequest,"Unsupported file type. Only png, jpg, and jpeg are allowed."))
     }
 
     err = h.uploadServices.UploadFileImage(ordercode,filename,fileType,fileBytes)
     if err != nil {
+        param := fmt.Sprintf("%s,%s,%s",ordercode,filename,fileType)
+		h.logError(err,param)
         return c.JSON(http.StatusInternalServerError, errs.NewInternalServerError())
     }
 
@@ -73,10 +81,29 @@ func (h *UploadtHandlers) GetFileImage(c echo.Context) error {
     filePath := h.uploadServices.DownFileImage(ordercode,filename)
 
     if filePath == "" {
-        return c.JSON(http.StatusBadRequest, errs.NewMessageAndStatusCode(http.StatusBadRequest,"Image not found."))
+        err := errs.NewMessageAndStatusCode(http.StatusBadRequest,"Image not found.")
+        param := fmt.Sprintf("%s,%s",ordercode,filename)
+		h.logError(err,param)
+        return c.JSON(http.StatusBadRequest, err)
     }
 
     return c.File(filePath)
 
+}
+
+func (h *UploadtHandlers) logError(err error,param string) {
+    pc, file, line, ok := runtime.Caller(1)
+    if !ok {
+        h.logger.Error("Failed to retrieve caller information")
+    }
+    funcName := runtime.FuncForPC(pc).Name()
+
+    h.logger.WithFields(logrus.Fields{
+        "func_name": funcName,
+        "file":      file,
+        "line":      line,
+        "error":     err.Error(),
+        "upload":  param,
+    }).Error("Upload Error")
 }
 

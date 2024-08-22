@@ -106,7 +106,7 @@ func main() {
 		}
 
 		uploadService := services.NewUploadServices("/app/fileuploads")
-		uploadHandler := handlers.NewUploadtHandlers(uploadService)
+		uploadHandler := handlers.NewUploadtHandlers(uploadService, logger)
 		upload.POST("/", uploadHandler.UploadFileImage)
 		upload.POST("/image", uploadHandler.GetFileImage)
 	}
