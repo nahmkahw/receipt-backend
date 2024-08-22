@@ -70,14 +70,6 @@ func main() {
 	backend := backend.NewBackendRepo(oracle_db,redis_cache, logger)
 	frontend := frontend.NewFrontendRepo(oracle_db,redis_cache)
 
-	// e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-	// 	AllowOrigins:     []string{"http://10.3.65.226:4400","http://10.3.65.218:4200", "https://sevkn.ru.ac.th", "https://backend.ru.ac.th"},
-	// 	AllowHeaders:     []string{"authorization", "Content-Type"},
-	// 	AllowCredentials: true,
-	// 	AllowMethods:     []string{echo.OPTIONS, echo.GET, echo.HEAD, echo.PUT, echo.PATCH, echo.POST, echo.DELETE},
-	// 	MaxAge:           86400,
-	// }))
-
 	logfile, err := os.OpenFile("/tmp/app.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		panic(fmt.Sprintf("error opening file: %v", err))
