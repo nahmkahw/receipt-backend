@@ -5,6 +5,7 @@ import (
 	"receipt-backend/nahmkahw/util"
 	"fmt"
 	"strings"
+	"net/http"
     "github.com/sirupsen/logrus"
     "runtime"
 )
@@ -48,22 +49,22 @@ func (r *reportRepoDB) GetDateString(str string) string {
 	}
 }
 
-func (r *reportRepoDB) FindReport(startdate,enddate,feerole string) ([]map[string]interface{},error) {
+func (r *reportRepoDB) FindReport(startdate,enddate,feerole string) ([]map[string]interface{},[]ReportFee,error) {
 
 	fees, err := r.FindReportFees(feerole)
 
 	if len(fees) < 1 {
 		errStr := fmt.Sprintf("ไม่พบข้อมูลค่าธรรมเนียม กลุ่มงาน : %s",feerole)
-		return nil, errs.NewNotFoundError(errStr)
+		return nil,nil, errs.NewMessageAndStatusCode(http.StatusNotFound,errStr)
 	}
 
 	dateString := r.GetDateString(startdate)
 
 	if err != nil {
-		return nil , err
+		return nil , nil ,err
 	}
 
-	 sql := `SELECT date_report, `
+	 sql := `SELECT ROW_NUMBER() OVER (ORDER BY date_report) AS id, date_report, `
 		var sqlParts []string
 		for _, fee := range fees {
 			// สร้าง SQL code สำหรับแต่ละฟิลด์
@@ -89,14 +90,16 @@ func (r *reportRepoDB) FindReport(startdate,enddate,feerole string) ([]map[strin
 		if err != nil {
 			param := fmt.Sprintf("%s,%s,%s",startdate,enddate,feerole)
 			r.logAndNotifyError(err,param)
-			return nil, err
+			return nil,nil, err
 		}
 
 		// ดึงชื่อคอลัมน์
 		columns, err := rows.Columns()
 		if err != nil {
-			return nil,err
+			return nil, nil , err
 		}
+
+
 
 		var reports []map[string]interface{}
 
@@ -112,7 +115,7 @@ func (r *reportRepoDB) FindReport(startdate,enddate,feerole string) ([]map[strin
 			// สแกนข้อมูล
 			err := rows.Scan(scanArgs...)
 			if err != nil {
-				return nil,err
+				return nil,nil,err
 			}
 
 			// สร้าง map สำหรับเก็บข้อมูล
@@ -121,6 +124,11 @@ func (r *reportRepoDB) FindReport(startdate,enddate,feerole string) ([]map[strin
 				if values[i] != nil {
 					// เก็บข้อมูลลงใน map โดยใช้ชื่อคอลัมน์เป็นคีย์
 					report[col] = values[i]
+					// for _, fee := range fees {
+					// 	if(strings.Contains(col,fee.FEE_NO)){
+					// 		report[col+"_name"] = fee.FEE_NAME
+					// 	}
+					// }
 				} else {
 					report[col] = nil
 				}
@@ -130,10 +138,10 @@ func (r *reportRepoDB) FindReport(startdate,enddate,feerole string) ([]map[strin
 		}
 
 		if err = rows.Err(); err != nil {
-			return nil,err
+			return nil,nil,err
 		}
 
-	return reports, nil
+	return reports,fees, nil
 }
 
 func (r *reportRepoDB) logAndNotifyError(err error,param string) {

@@ -29,7 +29,7 @@ type (
 
 	ReportRepoInterface interface {
 		FindReportFees(feerole string) ([]ReportFee ,error)
-		FindReport(startdate,enddate,feerole string) ([]map[string]interface{},error)
+		FindReport(startdate,enddate,feerole string) ([]map[string]interface{},[]ReportFee,error)
 	}
 )
 

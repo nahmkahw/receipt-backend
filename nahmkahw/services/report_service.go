@@ -3,6 +3,7 @@ package services
 import (
 	"receipt-backend/nahmkahw/errs"
 	"encoding/json"
+	"net/http"
 	"fmt"
 	"log"
 	"time"
@@ -27,7 +28,7 @@ func (g *reportServices) GetReport(reportRequest *ReportRequest) (*ReportRespons
 
 	fmt.Println("report-database")
 
-	reportsRepo , err := g.reportRepo.FindReport(reportRequest.StartDate,reportRequest.EndDate,reportRequest.FeeRole)
+	reportsRepo,feesRepo , err := g.reportRepo.FindReport(reportRequest.StartDate,reportRequest.EndDate,reportRequest.FeeRole)
 
 	if err != nil {
 		return &reportResponse, err
@@ -35,9 +36,29 @@ func (g *reportServices) GetReport(reportRequest *ReportRequest) (*ReportRespons
 
 	var reports []map[string]interface{}
 
-	for _, item := range reportsRepo {
+	 for _, item := range reportsRepo {
+        // วนลูปผ่าน key-value pair ใน map
+		
+        for oldKey, value := range item {
+            // เปลี่ยนชื่อคีย์
+			newKey := oldKey
+			for _, fee := range feesRepo {
+				if(oldKey == "CODE_"+fee.FEE_NO && fee.FEE_NAME != "-"){
+					newKey = fee.FEE_NAME
+					item[newKey] = value
+					// ลบคีย์เดิมออก
+					delete(item, oldKey)
+				} 		
+			}
+
+        }
 		reports = append(reports, item)
-	}
+    }
+
+	// for key, item := range reportsRepo {
+	// 	fmt.Println(key)
+	// 	reports = append(reports, item)
+	// }
 
 	reportResponse = ReportResponse{
 		StartDate :reportRequest.StartDate,
@@ -49,7 +70,7 @@ func (g *reportServices) GetReport(reportRequest *ReportRequest) (*ReportRespons
 
 	if len(reports) < 1 {
 		errStr := fmt.Sprintf("ไม่พบข้อมูลรายงาน %s ถึง %s กลุ่มงาน : %s",reportRequest.StartDate,reportRequest.EndDate,reportRequest.FeeRole)
-		return nil, errs.NewNotFoundError(errStr)
+		return &reportResponse, errs.NewMessageAndStatusCode(http.StatusNotFound,errStr)
 	}
 
 	reportsJSON, _ := json.Marshal(&reportResponse)
@@ -100,7 +121,7 @@ func (g *reportServices) GetReportFees(reportFeeRequest *ReportFeeRequest) (*Rep
 	}
 
 	if len(fees) < 1 {
-		return nil, errs.NewNotFoundError("ไม่พบข้อมูลค่าธรรมเนียม" + reportFeeRequest.FeeRole)
+		return nil, errs.NewNotFoundError()
 	}
 
 	reportfeeJSON, _ := json.Marshal(&reportFeeResponse)

@@ -18,7 +18,7 @@ import (
 	"github.com/labstack/echo/middleware"
 	_ "github.com/godror/godror"
 	"gopkg.in/go-playground/validator.v9"
-	"github.com/labstack/gommon/log"
+	//"github.com/labstack/gommon/log"
 	"github.com/jmoiron/sqlx"
 	"github.com/go-redis/redis/v7"
 )
@@ -44,6 +44,7 @@ func init() {
 	oracle_db = databases.NewDatabases().OracleInit()
 	redis_cache = databases.NewDatabases().RedisInint()
 }
+
 func setupLogger() *logrus.Logger {
     logger := logrus.New()
 	file, err := os.OpenFile("/tmp/app.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
@@ -55,6 +56,7 @@ func setupLogger() *logrus.Logger {
     logger.SetLevel(logrus.InfoLevel)
     return logger
 }
+
 func main() {
 	logger := setupLogger()
 
@@ -68,13 +70,13 @@ func main() {
 	backend := backend.NewBackendRepo(oracle_db,redis_cache, logger)
 	frontend := frontend.NewFrontendRepo(oracle_db,redis_cache)
 
-	/*e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins:     []string{"http://10.3.65.226:4400","http://10.3.65.226:4200", "https://sevkn.ru.ac.th", "https://backend.ru.ac.th"},
-		AllowHeaders:     []string{"authorization", "Content-Type"},
-		AllowCredentials: true,
-		AllowMethods:     []string{echo.OPTIONS, echo.GET, echo.HEAD, echo.PUT, echo.PATCH, echo.POST, echo.DELETE},
-		MaxAge:           86400,
-	}))*/
+	// e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+	// 	AllowOrigins:     []string{"http://10.3.65.226:4400","http://10.3.65.218:4200", "https://sevkn.ru.ac.th", "https://backend.ru.ac.th"},
+	// 	AllowHeaders:     []string{"authorization", "Content-Type"},
+	// 	AllowCredentials: true,
+	// 	AllowMethods:     []string{echo.OPTIONS, echo.GET, echo.HEAD, echo.PUT, echo.PATCH, echo.POST, echo.DELETE},
+	// 	MaxAge:           86400,
+	// }))
 
 	logfile, err := os.OpenFile("/tmp/app.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
@@ -90,10 +92,10 @@ func main() {
 		CustomTimeFormat: "2006-01-02 15:04:05.00000",
    		Output: logfile,
 	}))
-	//e.Use(middleware.Logger())
+	e.Use(middleware.Logger())
 	e.Logger.SetOutput(logfile)
-    e.Logger.SetLevel(log.DEBUG)
 
+    //e.Logger.SetLevel(log.DEBUG)
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORS())
 
@@ -101,8 +103,24 @@ func main() {
 
 	e.Validator = &CustomValidator{validator: validator.New()}
 
+	testing := e.Group("/testing")
+
+	upload := testing.Group("/upload")
+	{
+		// Setup fileupload package
+		err := util.CreateUploadsDir("/app/fileuploads")
+		if err != nil {
+			e.Logger.Fatal(err)
+		}
+
+		uploadService := services.NewUploadServices("/app/fileuploads")
+		uploadHandler := handlers.NewUploadtHandlers(uploadService)
+		upload.POST("/", uploadHandler.UploadFileImage)
+		upload.POST("/image", uploadHandler.GetFileImage)
+	}
+
 	//private group frontend
-	private := e.Group("/frontend")
+	private := testing.Group("/frontend")
 	{
 		//frontend api
 		private.GET("/checklogin", frontend.CheckLogin)
@@ -130,7 +148,7 @@ func main() {
 	}
 
 	//private group backend
-	privateBackend := e.Group("/backend")
+	privateBackend := testing.Group("/backend")
 	{
 		//backend api
 		privateBackend.POST("/login", backend.GetUserSignIn)
@@ -176,8 +194,8 @@ func main() {
 		reportService := services.NewReportServices(reportRepo, redis_cache)
 		reportHandler := handlers.NewReportHandlers(reportService)
 		
-		report.GET("/fees", reportHandler.GetReportFees)
-		report.GET("/", reportHandler.GetReport)
+		report.POST("/fees", reportHandler.GetReportFees)
+		report.POST("/", reportHandler.GetReport)
 	}
 
 	report.Use(middleware.Recover())

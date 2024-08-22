@@ -79,7 +79,7 @@ func ErrorHandlingMiddleware(logger *logrus.Logger) echo.MiddlewareFunc {
                     }).Error("Recovered from panic")
 
                     c.JSON(http.StatusInternalServerError, map[string]string{
-                        "message": "Internal Server Error...",
+                        "message1": "Internal Server Error",
                     })
                 }
             }()
@@ -101,7 +101,7 @@ func ErrorHandlingMiddleware(logger *logrus.Logger) echo.MiddlewareFunc {
 
                 // Return error message from handler
                 return c.JSON(http.StatusInternalServerError, map[string]string{
-                    "message": err.Error(),
+                    "message1": err.Error(),
                 })
             }
             return nil
