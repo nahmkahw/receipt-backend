@@ -17,8 +17,9 @@ type Fee struct {
 	FeeStatus     string  `json:"status"`
 	FeeRole       string  `json:"role"`
 	FeeSend       string  `json:"sentstatus"`
-	FeeComent     string  `json:"comment"`
-	StatusCurrent string  `json:statuscurrent`
+	FeeComment     string  `json:"comment"`
+	StatusCurrent string  `json:"statuscurrent"`
+	FeeUpload string  `json:"upload"`
 }
 
 type YearSemester struct {
@@ -32,7 +33,7 @@ func (h *frontendRepoDB) FindFeesId(c echo.Context) error {
 	fmt.Println(id)
 
 	sql := `select fee.fee_no,NVL(sh.fee_form,'-') status,NVL(sh.FEE_AMOUNT,0) amount,fee.fee_amount price,money_note,
-	NVL(sh.fee_role,'-') fee_role ,NVL(sh.fee_description ,'-') fee_comment,NVL(sh.fee_send,'-') fee_send,s.std_status_current
+	NVL(sh.fee_role,'-') fee_role ,NVL(sh.fee_description ,'-') fee_comment ,NVL(sh.fee_send,'-') fee_send,fee_upload, s.std_status_current
 		from dbeng000.vm_feesem_money_web fee
 		left join fees_sheet sh on FEE.FEE_NO = sh.fee_no
 		left join DBBACH00.VM_STUDENT_MOBILE s on fee.std_code = s.std_code
@@ -52,7 +53,7 @@ func (h *frontendRepoDB) FindFeesId(c echo.Context) error {
 	}
 
 	for rows.Next() {
-		err = rows.Scan(&fee.FeeNo, &fee.FeeStatus, &fee.FeeAmount, &fee.FeePrice, &fee.MoneyNote, &fee.FeeRole, &fee.FeeComent, &fee.FeeSend, &fee.StatusCurrent)
+		err = rows.Scan(&fee.FeeNo, &fee.FeeStatus, &fee.FeeAmount, &fee.FeePrice, &fee.MoneyNote, &fee.FeeRole, &fee.FeeComment, &fee.FeeSend, &fee.FeeUpload, &fee.StatusCurrent)
 		if err != nil {
 			c.Logger().Error(err.Error())
 			fmt.Println(err.Error())
@@ -64,6 +65,19 @@ func (h *frontendRepoDB) FindFeesId(c echo.Context) error {
 		// 	}
 		// } else {
 		// 	fees = append(fees, fee)
+		// }
+
+		// if (fee.FeeNo == "19") {
+		// 	fee.MoneyNote = "ค่าย้ายคณะ/เปลียนสาขาวิชา"
+		// }
+		// if (fee.FeeNo == "46") {
+		// 	fee.MoneyNote = "ค่าทำบัตรใหม่หรือสูญหาย"
+		// }
+		// if (fee.FeeNo == "48") {
+		// 	fee.MoneyNote = "ค่าเทียบโอน"
+		// }
+		// if (fee.FeeNo == "37") {
+		// 	fee.MoneyNote = "ค่าเทียบโอนต่างสถาบัน"
 		// }
 
 		fees = append(fees, fee)

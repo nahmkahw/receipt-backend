@@ -95,9 +95,7 @@ func main() {
 
 	e.Validator = &CustomValidator{validator: validator.New()}
 
-	testing := e.Group("/testing")
-
-	upload := testing.Group("/upload")
+	upload := e.Group("/upload")
 	{
 		// Setup fileupload package
 		err := util.CreateUploadsDir("/app/fileuploads")
@@ -109,10 +107,11 @@ func main() {
 		uploadHandler := handlers.NewUploadtHandlers(uploadService, logger)
 		upload.POST("/", uploadHandler.UploadFileImage)
 		upload.POST("/image", uploadHandler.GetFileImage)
+		upload.POST("/photo",uploadHandler.GetPhoto)
 	}
 
 	//private group frontend
-	private := testing.Group("/frontend")
+	private := e.Group("/private")
 	{
 		//frontend api
 		private.GET("/checklogin", frontend.CheckLogin)
@@ -137,14 +136,25 @@ func main() {
 		private.PUT("/address", frontend.UpdateAddress)
 
 		private.GET("/yearsemster", frontend.FindYearSemester)
+
+		faculty := private.Group("/faculty") 
+		{
+	
+			facultyRepo := repositories.NewFacultyRepo(oracle_db, logger)
+			facultyService := services.NewFacultyServices(facultyRepo, redis_cache)
+			facultyHandler := handlers.NewFacultyHandlers(facultyService)
+			
+			faculty.GET("/:id", facultyHandler.GetFacultys)
+		}
 	}
 
 	//private group backend
-	privateBackend := testing.Group("/backend")
+	privateBackend := e.Group("/backend")
 	{
 		//backend api
 		privateBackend.POST("/login", backend.GetUserSignIn)
 		privateBackend.GET("/photo", backend.GetPhoto)
+		
 	}
 
 
@@ -188,6 +198,8 @@ func main() {
 		
 		report.POST("/fees", reportHandler.GetReportFees)
 		report.POST("/", reportHandler.GetReport)
+
+		privateBackend.GET("/reportsummary", reportHandler.GetReportSummary)
 	}
 
 	report.Use(middleware.Recover())

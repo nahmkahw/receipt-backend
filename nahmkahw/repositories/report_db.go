@@ -9,6 +9,7 @@ import (
     "github.com/sirupsen/logrus"
     "runtime"
 )
+
 func (r *reportRepoDB) FindReportFees(feerole string) ([]ReportFee ,error) {
 	var (
 		fees []ReportFee
@@ -74,10 +75,10 @@ func (r *reportRepoDB) FindReport(startdate,enddate,feerole string) ([]map[strin
 	sql += strings.Join(sqlParts, ", ")
 	
 
-	sql +=  ` FROM (select r.DATE_REPORT,r.code CODE_REPORT,count(r.RECEIPT_ID) COUNT_REPORT 
-				from (select f.*,TO_CHAR(f.MODIFIED,` + dateString + `) DATE_REPORT from fees_receipt f 
+	sql +=  ` FROM (select TO_CHAR(o.DATE_SUCCESS,` + dateString + `) DATE_REPORT,r.code CODE_REPORT,count(r.RECEIPT_ID) COUNT_REPORT 
+				from (select f.receipt_id, f.code,f.order_id from fees_receipt f 
 				where f.STATUS_OPERATE = 'SUCCESS' and std_code != '6299999991') r inner join fees_order o on r.order_id = o.order_id and o.STATUS_SUCCESS = 'SUCCESS' and O.DATE_SUCCESS is not null
-		where r.DATE_REPORT between :1 and :2 group by r.code,r.DATE_REPORT)
+		where TO_CHAR(o.DATE_SUCCESS,` + dateString + `) between :1 and :2 group by r.code,TO_CHAR(o.DATE_SUCCESS,` + dateString + `))
 		GROUP BY 
 			date_report
 		ORDER BY

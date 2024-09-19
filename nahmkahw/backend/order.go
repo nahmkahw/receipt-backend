@@ -84,6 +84,10 @@ type (
 		Note          string         `json:"Note"`
 		CounterA          string         `json:"CounterA"`
 		CounterB          string         `json:"CounterB"`
+				CounterC          string         `json:"CounterC"`
+						CounterD          string         `json:"CounterD"`
+								CounterE          string         `json:"CounterE"`
+										CounterF          string         `json:"CounterF"`
 		FiscalYear		string         `json:"FiscalYear"`
 		CounterNo	string         `json:"CounterNo"`
 		ReceiptNo string         `json:"ReceiptNo"`
@@ -204,7 +208,12 @@ func (h *backendRepoDB) FindOrder(c echo.Context) error {
         when O.FLAG_ADDRESS  = '2'  then decode(FA.POSTCODE,null,'-',FA.POSTCODE)
         else decode(a.postcode,null,'-',a.postcode)
     end zipcode,st.sumtotal, NVL(A.MOBILE_TELEPHONE, '-') MOBILE_TELEPHONE, NVL(FA.MOBILE,'-') MOBILE,
-	NVL(fr.counterA, 0) AS counterA, NVL(fr.counterB, 0) AS counterB
+	NVL(fr.counterA, 0) AS counterA, 
+	NVL(fr.counterB, 0) AS counterB,
+	NVL(fr.counterC, 0) AS counterC,
+	NVL(fr.counterD, 0) AS counterD,
+	NVL(fr.counterE, 0) AS counterE,
+	NVL(fr.counterF, 0) AS counterF
 	FROM
     fees_order o
 LEFT JOIN
@@ -241,7 +250,7 @@ LEFT JOIN
             document_code,
             COUNT(*) AS countpayment
         FROM
-            regis000.VM_MNY_BANK_MACTH_RU
+            REGIS000.VM_MNY_BANK_MACTH_RU
         WHERE
             MATCH_RECEIPT IS NOT NULL
         GROUP BY
@@ -255,32 +264,36 @@ LEFT JOIN
             document_code,
             NVL(NOTE, '-') AS NOTE
         FROM
-            regis000.VM_MNY_BANK_MACTH_RU
+            REGIS000.VM_MNY_BANK_MACTH_RU
         WHERE
             MATCH_RECEIPT IS NOT NULL
     ) note ON o.std_code = note.std_code AND o.document_code = note.document_code
 LEFT JOIN
     DBBACH00.VM_STUDENT_MOBILE s ON o.std_code = s.std_code
 LEFT JOIN
-    DBBACH00.ugb_student_address a ON o.std_code = a.std_code
+    DBBACH00.UGB_STUDENT_ADDRESS a ON o.std_code = a.std_code
 LEFT JOIN
     fees_address fa ON o.std_code = fa.std_code
 LEFT JOIN
     (
         SELECT
             r.order_id,
+			COUNT(CASE WHEN s.fee_role = 'A' THEN 1 END) AS counterA,
             COUNT(CASE WHEN s.fee_role = 'B' THEN 1 END) AS counterB,
-            COUNT(CASE WHEN s.fee_role = 'A' THEN 1 END) AS counterA
+			COUNT(CASE WHEN s.fee_role = 'C' THEN 1 END) AS counterC,         
+			COUNT(CASE WHEN s.fee_role = 'D' THEN 1 END) AS counterD,
+			COUNT(CASE WHEN s.fee_role = 'E' THEN 1 END) AS counterE,
+			COUNT(CASE WHEN s.fee_role = 'F' THEN 1 END) AS counterF
         FROM
             fees_receipt r
         LEFT JOIN
             fees_sheet s ON s.FEE_NO = r.CODE
         WHERE
-            s.fee_role IN ('A', 'B')
+            s.fee_role IN ('A', 'B','C','D','E','F')
         GROUP BY
             r.order_id
     ) fr ON o.order_id = fr.order_id
-	where o.ORDER_ID > 789 and o.std_code not in ('6299999991','6299999992') and 1=1 `
+	where o.ORDER_ID > 789 and 1=1 `
 
 	switch student.Status {
 	case "VERIFY":
@@ -330,7 +343,7 @@ LEFT JOIN
 				&order.FiscalYear, &order.CounterNo, &order.ReceiptNo, &order.CheckBill,
 				&order.Status,&order.StatusPackage,
 				&order.CountPayment, &order.CountReceipt, &order.Pending, &order.Operate, &order.Success,&order.Cancel, &order.Note,&order.CountNone,
-				&order.NameThai, &order.ZipCode, &order.SumTotal,&order.MobileTelephone,&order.Mobile,&order.CounterA,&order.CounterB)
+				&order.NameThai, &order.ZipCode, &order.SumTotal,&order.MobileTelephone,&order.Mobile,&order.CounterA,&order.CounterB,&order.CounterC,&order.CounterD,&order.CounterE,&order.CounterF)
 			//fmt.Println(order)
 			orders = append(orders, order)
 
@@ -641,7 +654,7 @@ func (h *backendRepoDB) UpdateOrder(c echo.Context) error {
 
 	// var sendcode string
 	// var orderid int64
-	// sqlStatement := `SELECT SEND_CODE,ORDER_ID FROM FEES_ORDER WHERE SEND_CODE = :1`
+	// sqlStatement := `SELECT SEND_CODE,ORDER_ID FROM fees_order WHERE SEND_CODE = :1`
 	// row := h.oracle_db.QueryRow(sqlStatement, Order.SendCode)
 	// err = row.Scan(&sendcode, &orderid)
 
@@ -652,15 +665,15 @@ func (h *backendRepoDB) UpdateOrder(c echo.Context) error {
 
 	switch Order.Status {
 	case "QR":
-		_, err = tx.ExecContext(ctx, "UPDATE FEES_ORDER SET DOCUMENT_CODE  = TO_CHAR(SYSDATE+3, 'YYMMDDHH24MISS'), STATUS_PAYMENT= :1 , DATE_PAYMENT = sysdate, MODIFIED = sysdate WHERE ORDER_CODE = :2 ", Order.Status, Order.OrderCode)
+		_, err = tx.ExecContext(ctx, "UPDATE fees_order SET DOCUMENT_CODE  = TO_CHAR(SYSDATE+3, 'YYMMDDHH24MISS'), STATUS_PAYMENT= :1 , DATE_PAYMENT = sysdate, MODIFIED = sysdate WHERE ORDER_CODE = :2 ", Order.Status, Order.OrderCode)
 	case "CONFIRM":
-		_, err = tx.ExecContext(ctx, "UPDATE FEES_ORDER SET STATUS_CONFIRM = :1 , DATE_CONFIRM = sysdate, MODIFIED = sysdate WHERE ORDER_CODE = :2 ", Order.Status, Order.OrderCode)
+		_, err = tx.ExecContext(ctx, "UPDATE fees_order SET STATUS_CONFIRM = :1 , DATE_CONFIRM = sysdate, MODIFIED = sysdate WHERE ORDER_CODE = :2 ", Order.Status, Order.OrderCode)
 	case "APPROVE":
-		_, err = tx.ExecContext(ctx, "UPDATE FEES_ORDER SET STATUS_APPROVE = :1 , DATE_APPROVE = sysdate, MODIFIED = sysdate WHERE ORDER_CODE = :2 ", Order.Status, Order.OrderCode)
+		_, err = tx.ExecContext(ctx, "UPDATE fees_order SET STATUS_APPROVE = :1 , DATE_APPROVE = sysdate, MODIFIED = sysdate WHERE ORDER_CODE = :2 ", Order.Status, Order.OrderCode)
 	case "PROCESS":
-		_, err = tx.ExecContext(ctx, "UPDATE FEES_ORDER SET STATUS_PROCESS = :1 , DATE_PROCESS = sysdate, MODIFIED = sysdate WHERE ORDER_CODE = :2 ", Order.Status, Order.OrderCode)
+		_, err = tx.ExecContext(ctx, "UPDATE fees_order SET STATUS_PROCESS = :1 , DATE_PROCESS = sysdate, MODIFIED = sysdate WHERE ORDER_CODE = :2 ", Order.Status, Order.OrderCode)
 	case "SUCCESS":
-		_, err = tx.ExecContext(ctx, "UPDATE FEES_ORDER SET STATUS_SUCCESS = :1 , SEND_CODE = :2 , SEND_DATE = :3, DATE_SUCCESS = sysdate, MODIFIED = sysdate, STATUS_PACKAGE = :4 WHERE ORDER_CODE = :5 ", Order.Status, Order.SendCode, Order.SendDate, Order.StatusPackage, Order.OrderCode)
+		_, err = tx.ExecContext(ctx, "UPDATE fees_order SET STATUS_SUCCESS = :1 , SEND_CODE = :2 , SEND_DATE = :3, DATE_SUCCESS = sysdate, MODIFIED = sysdate, STATUS_PACKAGE = :4 WHERE ORDER_CODE = :5 ", Order.Status, Order.SendCode, Order.SendDate, Order.StatusPackage, Order.OrderCode)
 	default:
 		s := fmt.Sprintf("ไม่พบสถานะ %s ของ คำสั่งซื้อเลขที่ : %s ", Order.Status, Order.OrderCode)
 		return c.JSON(http.StatusOK, map[string]string{"message": s})
@@ -785,7 +798,7 @@ func (h *backendRepoDB) FindOrderDate(c echo.Context) error {
 	left join (select r.order_id c_order_id,count(STATUS_OPERATE) cancel from fees_receipt r where STATUS_OPERATE = 'CANCEL' group by order_id) c on c.c_order_id = o.order_id
 	left join (select std_code,substr(qrid,-12) doccode,count(*) countpayment from qr_payment_confirm_tmb qr where qr.system_id = 161 group by std_code,substr(qrid,-12)) p 
 	on o.std_code = p.std_code and o.document_code = p.doccode
-	where o.ORDER_ID > 789 and o.std_code not in ('6299999991','6299999992') and 1=1 `
+	where o.ORDER_ID > 789 and 1=1 `
 
 	switch student.Status {
 	case "VERIFY":

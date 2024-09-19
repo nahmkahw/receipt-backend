@@ -66,3 +66,16 @@ func (h *ReportHandlers) GetReport(c echo.Context) error {
 	return c.JSON(http.StatusOK, reportResponse)
 
 }
+
+func (h *ReportHandlers) GetReportSummary(c echo.Context) error {
+
+	reportResponse, err := h.reportServices.GetReportSummary()
+
+	if err != nil {
+		c.Logger().Error(err.Error())
+		return c.JSON(http.StatusInternalServerError, errs.NewMessageAndStatusCode(http.StatusInternalServerError,err.Error()))
+	}
+
+	return c.JSON(http.StatusOK, reportResponse)
+
+}

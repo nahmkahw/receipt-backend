@@ -194,7 +194,7 @@ func (h *backendRepoDB) FindReceipt(c echo.Context) error {
 		   inner join fees_order o
 			  on (    r.order_id = o.order_id
 				  and o.ORDER_ID > 789
-				  and o.std_code not in ('6299999991','6299999992') 
+				  
 				  and o.status_approve = 'APPROVE'
 				  and o.status_success is null)
 		   left join dbeng000.vm_feesem_money_web fee
@@ -276,28 +276,28 @@ func SqlUpdateStatus(receiptForm *ReceiptForm) string {
 	sql := ``
 	switch receiptForm.StatusOperate {
 	case "CANCEL":
-		sql = `UPDATE FEES_RECEIPT SET STATUS_OPERATE = 'CANCEL' , 
+		sql = `UPDATE fees_receipt SET STATUS_OPERATE = 'CANCEL' , 
 				USER_UPDATE = :1, MODIFIED = sysdate WHERE ORDER_CODE = :2 and RECEIPT_ID = :3 `
 	case "PENDING":
-		sql = `UPDATE FEES_RECEIPT SET STATUS_OPERATE = 'PENDING' , 
+		sql = `UPDATE fees_receipt SET STATUS_OPERATE = 'PENDING' , 
 				USER_UPDATE = :1, MODIFIED = sysdate WHERE ORDER_CODE = :2 and RECEIPT_ID = :3 `
 	case "OPERATE":
-		sql = `UPDATE FEES_RECEIPT SET STATUS_OPERATE = 'OPERATE' , 
+		sql = `UPDATE fees_receipt SET STATUS_OPERATE = 'OPERATE' , 
 				USER_UPDATE = :1, MODIFIED = sysdate WHERE ORDER_CODE = :2 and RECEIPT_ID = :3 `
 	case "SUCCESS":
-		sql = `UPDATE FEES_RECEIPT SET STATUS_OPERATE = 'SUCCESS' , 
+		sql = `UPDATE fees_receipt SET STATUS_OPERATE = 'SUCCESS' , 
 				USER_UPDATE = :1, MODIFIED = sysdate WHERE ORDER_CODE = :2 and RECEIPT_ID = :3 `
 	}
 	return sql
 }
 
 func SqlUpdateAdditionDocument() string {
-	sql := `UPDATE FEES_RECEIPT SET ADDITION_DOCUMENT = :1, USER_UPDATE = :2, MODIFIED = sysdate WHERE ORDER_CODE = :3 and RECEIPT_ID = :4 `
+	sql := `UPDATE fees_receipt SET ADDITION_DOCUMENT = :1, USER_UPDATE = :2, MODIFIED = sysdate WHERE ORDER_CODE = :3 and RECEIPT_ID = :4 `
 	return sql
 }
 
 func SqlUpdateVerify() string {
-	sql := `UPDATE FEES_RECEIPT SET STATUS_OPERATE = :1 , ADDITION_DOCUMENT = :2, USER_UPDATE = :3, MODIFIED = sysdate WHERE ORDER_CODE = :4 and RECEIPT_ID = :5 `
+	sql := `UPDATE fees_receipt SET STATUS_OPERATE = :1 , ADDITION_DOCUMENT = :2, USER_UPDATE = :3, MODIFIED = sysdate WHERE ORDER_CODE = :4 and RECEIPT_ID = :5 `
 	return sql
 }
 

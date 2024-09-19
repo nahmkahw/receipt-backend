@@ -5,10 +5,14 @@ import (
     "receipt-backend/nahmkahw/errs"
 	"net/http"
 	"io/ioutil"
+    "image/jpeg"
 	"strings"
     "github.com/sirupsen/logrus"
     "runtime"
+    "time"
     "fmt"
+    "bytes"
+    "image"
 
 	"github.com/labstack/echo"
 )
@@ -17,6 +21,10 @@ type (
 	UploadtHandlers struct {
 		uploadServices services.UploadServiceInterface
         logger *logrus.Logger
+	}
+
+    StudentForm struct {
+		Std_code    string `json:"std_code" validate:"required"`
 	}
 )
 
@@ -105,5 +113,68 @@ func (h *UploadtHandlers) logError(err error,param string) {
         "error":     err.Error(),
         "upload":  param,
     }).Error("Upload Error")
+}
+
+func (h *UploadtHandlers) GetPhoto(c echo.Context) error {
+    
+    student := new(StudentForm)
+
+	if err := c.Bind(student); err != nil {
+		c.Logger().Error(err.Error())
+		return c.JSON(http.StatusBadRequest, errs.NewBadRequestError())
+	}
+
+	if err := c.Validate(student); err != nil {
+		c.Logger().Error(err.Error())
+		return c.JSON(http.StatusBadRequest, errs.NewBadRequestError())
+	}
+
+	 url := "http://10.2.1.155:9100/student/photo/" + student.Std_code
+
+	client := &http.Client{
+		Timeout: 60 * time.Second, // Set a higher timeout value
+	}
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, err)
+	}
+
+	response, err := client.Do(req)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, err)
+	}
+	defer response.Body.Close()
+
+	contentType := response.Header.Get("Content-Type")
+	if !strings.HasPrefix(contentType, "image/") {
+        return c.JSON(http.StatusBadRequest, errs.NewMessageAndStatusCode(http.StatusBadRequest,"Unsupported image type."))
+	}
+
+	fmt.Println(contentType)
+
+	// Decode the image
+	var img image.Image
+	switch contentType {
+	case "image/jpeg":
+		img, err = jpeg.Decode(response.Body)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, err)
+		}
+	case "image/png":
+		img, err = jpeg.Decode(response.Body)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, err)
+		}
+	default:
+        return c.JSON(http.StatusBadRequest, errs.NewMessageAndStatusCode(http.StatusBadRequest,"Unsupported image format."))
+	}
+
+	outputImg := bytes.NewBuffer(nil)
+
+	if err := jpeg.Encode(outputImg, img, nil); err != nil {
+		return c.JSON(http.StatusBadRequest, err)
+	}
+
+	return c.Blob(http.StatusOK, contentType, outputImg.Bytes())
 }
 

@@ -37,6 +37,10 @@ type (
 		AdditionDocument string  `json:"additiondocument"`
 		Year             string  `json:"year"`
 		Semester         string  `json:"semester"`
+		FacultyNo             string  `json:"facultyno"`
+		MajorNo         string  `json:"majorno"`
+		FacultyName             string  `json:"facultyname"`
+		MajorName         string  `json:"majorname"`
 	}
 
 	Item struct {
@@ -118,7 +122,7 @@ func (h *frontendRepoDB) CreateOrder(c echo.Context) error {
 		order        Order
 	)
 
-	stmt, err := h.oracle_db.Prepare(`select LOWER(SYS_GUID()) AS code , FEES_ORDER_SEQ.NEXTVAL AS orderid, TO_CHAR(SYSDATE+3, 'YYMMDDHH24MISS') AS documentcode  from dual`)
+	stmt, err := h.oracle_db.Prepare(`select LOWER(SYS_GUID()) AS code , fees_order_SEQ.NEXTVAL AS orderid, TO_CHAR(SYSDATE+3, 'YYMMDDHH24MISS') AS documentcode  from dual`)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, "Error: Get Code "+err.Error())
 	}
@@ -141,7 +145,7 @@ func (h *frontendRepoDB) CreateOrder(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, "Error: Begin Transaction "+err.Error())
 	}
 
-	_, err = tx.ExecContext(ctx, `insert into FEES_ORDER (ORDER_ID,ORDER_CODE,STD_CODE,CREATED,MODIFIED,STATUS_VERIFY,DATE_VERIFY,FLAG_ADDRESS,DOCUMENT_CODE,TOTAL) values (:1,:2,:3,sysdate,sysdate,:4,sysdate,:5,:6,:7)`, orderid, code, r.StudentCode, r.StatusPayment, r.FlagAddress, documentcode, r.Total)
+	_, err = tx.ExecContext(ctx, `insert into fees_order (ORDER_ID,ORDER_CODE,STD_CODE,CREATED,MODIFIED,STATUS_VERIFY,DATE_VERIFY,FLAG_ADDRESS,DOCUMENT_CODE,TOTAL) values (:1,:2,:3,sysdate,sysdate,:4,sysdate,:5,:6,:7)`, orderid, code, r.StudentCode, r.StatusPayment, r.FlagAddress, documentcode, r.Total)
 
 	if err != nil {
 		c.Logger().Error(err.Error())
@@ -150,7 +154,7 @@ func (h *frontendRepoDB) CreateOrder(c echo.Context) error {
 
 	for _, item := range r.Cart {
 
-		_, err := tx.ExecContext(ctx, `insert into FEES_RECEIPT (RECEIPT_ID,CODE,STD_CODE,AMOUNT,PRICE,STATUS,CREATED,MODIFIED,ORDER_CODE,ORDER_ID,YEAR,SEMESTER) values (FEES_RECEIPT_SEQ.NEXTVAL,:1,:2,:3,:4,:5,sysdate,sysdate,:6,:7,:8,:9)`, item.Code, item.StudentCode, item.Amount, item.Price, item.Status, code, orderid, item.Year, item.Semester)
+		_, err := tx.ExecContext(ctx, `insert into fees_receipt (RECEIPT_ID,CODE,STD_CODE,AMOUNT,PRICE,STATUS,CREATED,MODIFIED,ORDER_CODE,ORDER_ID,YEAR,SEMESTER,FACULTY_NO,MAJOR_NO,FACULTY_NAME_THAI,MAJOR_NAME_THAI ) values (fees_receipt_SEQ.NEXTVAL,:1,:2,:3,:4,:5,sysdate,sysdate,:6,:7,:8,:9,:10,:11,:12,:13)`, item.Code, item.StudentCode, item.Amount, item.Price, item.Status, code, orderid, item.Year, item.Semester,item.FacultyNo,item.MajorNo,item.FacultyName,item.MajorName)
 
 		if err != nil {
 			c.Logger().Error(err.Error())
@@ -387,13 +391,17 @@ func (h *frontendRepoDB) FindOrder(c echo.Context) error {
 			decode(r.ADDITION_DOCUMENT, null, '-', r.ADDITION_DOCUMENT) ADDITION_DOCUMENT,
 			decode(r.YEAR, null, '-', r.YEAR) YEAR,
 			decode(r.SEMESTER, null, '-', r.SEMESTER) SEMESTER,
+			decode(r.FACULTY_NO, null, '-', r.FACULTY_NO) FACULTY_NO,
+			decode(r.MAJOR_NO, null, '-', r.MAJOR_NO) MAJOR_NO,
+			decode(r.FACULTY_NAME_THAI, null, '-', r.FACULTY_NAME_THAI) FACULTY_NAME_THAI,
+			decode(r.MAJOR_NAME_THAI, null, '-', r.MAJOR_NAME_THAI) MAJOR_NAME_THAI,
 			decode(sh.FEE_AMOUNT, null, '-', sh.FEE_AMOUNT) FEE_AMOUNT,
 			decode(sh.FEE_FORM, null, 'X', sh.FEE_FORM) FEE_FORM,
 			decode(sh.FEE_ROLE, null, 'G', sh.FEE_ROLE) FEE_ROLE,
 			decode(sh.FEE_DESCRIPTION, null, 'ไม่พบข้อมูล', sh.FEE_DESCRIPTION) FEE_DESCRIPTION,
 			decode(sh.FEE_SEND, null, '-', sh.FEE_SEND) FEE_SEND,
 			decode(fee.MONEY_NOTE, null, decode(r.CODE,'40','ค่าจัดส่งเอกสาร',sh.fee_name) , FEE.MONEY_NOTE) description
-			from (select RECEIPT_ID ,CODE ,STD_CODE ,AMOUNT ,PRICE ,STATUS , CREATED ,MODIFIED ,ORDER_CODE ,ORDER_ID ,STATUS_OPERATE ,USER_UPDATE ,ADDITION_DOCUMENT,YEAR,SEMESTER  from fees_receipt where ORDER_CODE = :1 ) r 
+			from (select RECEIPT_ID ,CODE ,STD_CODE ,AMOUNT ,PRICE ,STATUS , CREATED ,MODIFIED ,ORDER_CODE ,ORDER_ID ,STATUS_OPERATE ,USER_UPDATE ,ADDITION_DOCUMENT,YEAR,SEMESTER,FACULTY_NO,MAJOR_NO,FACULTY_NAME_THAI,MAJOR_NAME_THAI  from fees_receipt where ORDER_CODE = :1 ) r 
 			left join dbeng000.vm_feesem_money_web fee on ( r.std_code = fee.std_code and r.code = fee.fee_no )
 			left join fees_sheet sh on r.code = sh.fee_no 
 			order by 1`
@@ -410,13 +418,17 @@ func (h *frontendRepoDB) FindOrder(c echo.Context) error {
 			defer rowRecripts.Close()
 
 			for rowRecripts.Next() {
+				
 				rowRecripts.Scan(&receipt.ReceiptId, &receipt.Code, &receipt.StudentCode, &receipt.Amount,
 					&receipt.Price, &receipt.Status, &receipt.Created, &receipt.Modified, &receipt.OrderCode,
 					&receipt.OrderId, &receipt.StatusOperate, &receipt.UserUpdate, &receipt.AdditionDocument,
-					&receipt.Year, &receipt.Semester,
+					&receipt.Year, &receipt.Semester, &receipt.FacultyNo, &receipt.MajorNo, &receipt.FacultyName, &receipt.MajorName,
 					&receipt.FeeAmount, &receipt.FeeForm, &receipt.FeeRole,
 					&receipt.FeeDescription, &receipt.FeeSend, &receipt.Description)
 				//fmt.Println(order.OrderId, receipt)
+				// if (receipt.Code == "19") {
+				// 	receipt.Description = "ค่าย้ายคณะ/เปลียนสาขาวิชา"
+				// }
 				order.Cart = append(order.Cart, receipt)
 			}
 
@@ -614,9 +626,9 @@ func (h *frontendRepoDB) UpdateOrder(c echo.Context) error {
 
 	switch Order.Status {
 	case "QR":
-		_, err = tx.ExecContext(ctx, "UPDATE FEES_ORDER SET FLAG_ADDRESS = :1 , MODIFIED = sysdate WHERE ORDER_CODE = :2 and STATUS_CONFIRM is null ", Order.FlagAddress, Order.OrderCode)
+		_, err = tx.ExecContext(ctx, "UPDATE fees_order SET FLAG_ADDRESS = :1 , MODIFIED = sysdate WHERE ORDER_CODE = :2 and STATUS_CONFIRM is null ", Order.FlagAddress, Order.OrderCode)
 	case "CONFIRM":
-		_, err = tx.ExecContext(ctx, "UPDATE FEES_ORDER SET STATUS_CONFIRM = 'CONFIRM' ,DATE_CONFIRM = sysdate , MODIFIED = sysdate WHERE ORDER_CODE = :1 and STATUS_CONFIRM is null ", Order.OrderCode)
+		_, err = tx.ExecContext(ctx, "UPDATE fees_order SET STATUS_CONFIRM = 'CONFIRM' ,DATE_CONFIRM = sysdate , MODIFIED = sysdate WHERE ORDER_CODE = :1 and STATUS_CONFIRM is null ", Order.OrderCode)
 	default:
 		s := fmt.Sprintf("ไม่พบสถานะ %s ของ คำสั่งซื้อเลขที่ : %s ", Order.Status, Order.OrderCode)
 		return c.JSON(http.StatusOK, map[string]string{"message": s})

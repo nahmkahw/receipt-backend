@@ -1,14 +1,41 @@
 package services
 
 import (
-	"io/ioutil"
+    "bytes"
+    "image"
+    "image/png"
     "os"
     "path/filepath"
+    _ "image/gif"  // Support for GIF files
+    _ "image/jpeg" // Support for JPEG files
+    _ "image/png"  // Support for PNG files
 )
 
 func (s *uploadService) UploadFileImage(ordercode,filename,fileType string , fileBytes []byte) error {
-    filePath := filepath.Join(s.fileStoragePath, ordercode + "_"+ filename + "." + fileType)
-    return ioutil.WriteFile(filePath, fileBytes, 0644)
+
+        // Decode the image from fileBytes
+    img, _, err := image.Decode(bytes.NewReader(fileBytes))
+    if err != nil {
+        return err
+    }
+
+    // Create the path for the PNG file
+    filePath := filepath.Join(s.fileStoragePath, ordercode + "_"+ filename + ".png")
+
+    // Save the image as PNG
+    outFile, err := os.Create(filePath)
+    if err != nil {
+        return err
+    }
+    defer outFile.Close()
+
+    err = png.Encode(outFile, img)
+    if err != nil {
+        return err
+    }
+
+    return nil
+
 }
 
 func (s *uploadService) DownFileImage(ordercode,filename string) string {
